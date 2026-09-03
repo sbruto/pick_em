@@ -1,3 +1,6 @@
 .ipynb_checkpoints/
 __pycache__/
 *.pyc
+
+# weekly CBS pool screenshots (Sean drops them here; Claude reads pick % into the notebook)
+screenshots/
