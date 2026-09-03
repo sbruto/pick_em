@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.sbruton.pickem-email</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/sean/miniforge3/envs/astroconda/bin/python</string>
+    <string>/Users/sean/pick_em/email_picks.py</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/sean/pick_em</string>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Weekday</key><integer>2</integer>
+      <key>Hour</key><integer>8</integer>
+      <key>Minute</key><integer>30</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>4</integer>
+      <key>Hour</key><integer>8</integer>
+      <key>Minute</key><integer>30</integer>
+    </dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/Users/sean/pick_em/picks/email.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/sean/pick_em/picks/email.log</string>
+</dict>
+</plist>

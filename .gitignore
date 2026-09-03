@@ -4,3 +4,5 @@ __pycache__/
 
 # weekly CBS pool screenshots (Sean drops them here; Claude reads pick % into the notebook)
 screenshots/
+config.json
+picks/
