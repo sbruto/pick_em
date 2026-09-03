@@ -46,59 +46,58 @@ def load_previous(path):
         return json.load(f)
 
 
+RED = '\x00'   # marker prefix: this line gets colored red in Mail (stripped before sending)
+
+
 def build_email(week, games, tiebreak, prev, updated):
     """Return (subject, body, changed_line_indexes) as plain text.
 
-    Changed picks are marked with >>> and the previous pick; the tiebreak likewise if the
-    vegas total moved by a point or more.
+    Layout: copy/paste list first, then what changed since the last email, then the
+    details. Lines that changed are colored red in Mail (no text markers).
     """
     prev_picks = {(g['away'], g['home']): g['pick'] for g in (prev or {}).get('games', [])}
     prev_tb = (prev or {}).get('tiebreak')
+    tb_num = int(math.floor(tiebreak['total']))
+    old_tb = int(math.floor(prev_tb['total'])) if prev_tb else None
+
+    changed = {(g['away'], g['home']) for g in games
+               if (g['away'], g['home']) in prev_picks and prev_picks[(g['away'], g['home'])] != g['pick']}
+    tb_changed = old_tb is not None and old_tb != tb_num
 
     subject = f"Hannah's picks: Week {week}" + (" (updated Thu)" if updated else "")
-    tb_num = int(math.floor(tiebreak['total']))
-    lines, changed_idx, changes = [], [], []
-
-    lines.append(f"Hannah's picks, Week {week}" + (" (Thursday update)" if updated else ""))
-    lines.append(f"Vegas favorite in every game. Generated {dt.datetime.now():%a %b %d %H:%M}.")
-    lines.append("")
-    hdr_idx = len(lines)
-    lines.append("")  # placeholder for change summary
-    lines.append("")
-
+    L = []
+    L.append(f"Hannah's picks, Week {week}" + (" (Thursday update)" if updated else ""))
+    L.append("")
     for g in games:
-        key = (g['away'], g['home'])
-        line = (f"{g['away']:>12} @ {g['home']:<12} ->  {g['pick']:<10} "
-                f"({g['spread']:+.1f}, {g['p_pick']:.0%})")
-        if prev is not None and key in prev_picks and prev_picks[key] != g['pick']:
-            line = f">>> {line}   CHANGED, was {prev_picks[key]}"
-            changed_idx.append(len(lines))
-            changes.append(f"{g['away']} @ {g['home']}: now {g['pick']} (was {prev_picks[key]})")
-        lines.append(line)
-    lines.append("")
+        L.append((RED if (g['away'], g['home']) in changed else "") + g['pick'])
+    L.append((RED if tb_changed else "") + f"tiebreak {tb_num}")
+    L.append("")
 
-    tb_line = (f"Tiebreaker: {tiebreak['away']} @ {tiebreak['home']}, "
-               f"vegas total {tiebreak['total']:.1f}  ->  enter {tb_num}")
-    if prev_tb and abs(prev_tb['total'] - tiebreak['total']) >= 1:
-        old = int(math.floor(prev_tb['total']))
-        tb_line = f">>> {tb_line}   CHANGED, was {old}"
-        changed_idx.append(len(lines))
-        changes.append(f"tiebreaker: now {tb_num} (was {old})")
-    lines.append(tb_line)
-    lines.append("")
+    if prev is not None:
+        if changed or tb_changed:
+            L.append("Changes since the last email:")
+            for g in games:
+                k = (g['away'], g['home'])
+                if k in changed:
+                    L.append(RED + f"  {g['away']} @ {g['home']}: now {g['pick']} (was {prev_picks[k]})")
+            if tb_changed:
+                L.append(RED + f"  tiebreaker: now {tb_num} (was {old_tb})")
+        else:
+            L.append("No changes since the last email.")
+        L.append("")
 
-    lines.append("Copy/paste, one per line, site order:")
-    lines.extend(g['pick'] for g in games)
-    lines.append(f"tiebreak {tb_num}")
+    L.append(f"Details (vegas favorite in every game; spread, win probability). "
+             f"Generated {dt.datetime.now():%a %b %d %H:%M}.")
+    for g in games:
+        L.append((RED if (g['away'], g['home']) in changed else "") +
+                 f"{g['away']:>12} @ {g['home']:<12} ->  {g['pick']:<10} ({g['spread']:+.1f}, {g['p_pick']:.0%})")
+    L.append((RED if tb_changed else "") +
+             f"Tiebreaker: {tiebreak['away']} @ {tiebreak['home']}, vegas total {tiebreak['total']:.1f} -> enter {tb_num}")
 
-    if prev is None:
-        lines[hdr_idx] = "(first run this week, nothing to compare against)"
-    elif changes:
-        lines[hdr_idx] = "CHANGES since last email:\n  " + "\n  ".join(changes)
-    else:
-        lines[hdr_idx] = "No changes since last email."
-
-    return subject, "\n".join(lines), changed_idx
+    # color indexes are computed on the FINAL line list, so they match Mail's paragraphs
+    changed_idx = [i for i, ln in enumerate(L) if ln.startswith(RED)]
+    body = "\n".join(ln[1:] if ln.startswith(RED) else ln for ln in L)
+    return subject, body, changed_idx
 
 
 def send_mail(subject, body, to, sender, changed_idx=()):
