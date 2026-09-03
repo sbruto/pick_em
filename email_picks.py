@@ -11,7 +11,7 @@ the picks; the Thursday run diffs against them and flags anything that changed.
 config.json (gitignored; see config.example.json):
     to                    list of recipient addresses; the first one is "me"
     sender                From address as Mail.app knows it, e.g. "Sean <x@y.edu>"
-    season_week1_tuesday  ISO date of the Tuesday before Week 1 kicks off
+    season_week1_tuesday  ISO date of the Tuesday of Week 1 (runs before it count as Week 1)
     state_dir             where week_NN.json snapshots and the log go (gitignored)
 """
 import argparse
@@ -36,7 +36,7 @@ def load_config():
 def week_number(cfg, today=None):
     today = today or dt.date.today()
     start = dt.date.fromisoformat(cfg['season_week1_tuesday'])
-    return (today - start).days // 7 + 1
+    return max(1, (today - start).days // 7 + 1)   # preseason runs count as Week 1
 
 
 def load_previous(path):
