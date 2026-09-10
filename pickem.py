@@ -58,21 +58,38 @@ def load_sections(tab):
     so no more hand-maintaining the sources list."""
     sources = [c for c in tab.columns
                if c not in ('Time', 'Open') and not str(c).startswith('Unnamed')]
-    rows, seen, section = [], set(), 0
+    # Completed games are moved to the END of each section under a 'Final' marker row,
+    # with their closing lines still shown, so they would otherwise look like live games
+    # (and the "last game listed" tiebreaker logic would pick them). Drop them. Second
+    # guard: rotation numbers ascend within a section, so a drop in rotation number also
+    # means we've hit the finished games.
+    rows, seen, section, final, last_rot, dropped = [], set(), 0, False, -1, []
     for _, r in tab.iterrows():
         t = r['Time']
         if not isinstance(t, str):
             continue
+        if re.match(r'^(Final|In Progress|Live|Postponed)', t.strip(), re.IGNORECASE):
+            final = True
+            continue
         m = re.match(r'^(\d+)\s+(.*\S)', t)      # team rows look like '451 Patriots'
         if not m:
-            continue                              # skips 'Matchup', 'Final', header junk
+            continue                              # skips 'Matchup', header junk
         rot = int(m.group(1))
         if rot in seen:                           # rotation number repeated -> new section
             section += 1
-            seen = set()
+            seen, final, last_rot = set(), False, -1
         seen.add(rot)
+        if rot < last_rot and rot % 2 == 1:       # away team out of order -> finished game
+            final = True
+        last_rot = rot
+        if final:
+            if section == 0:
+                dropped.append(m.group(2))
+            continue
         rows.append({'section': section, 'Team': m.group(2),
                      **{s: r[s] for s in sources}})
+    if dropped:
+        print(f"dropping finished game(s): {dropped}")
     return pd.DataFrame(rows), sources
 
 
