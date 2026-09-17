@@ -17,7 +17,7 @@ Model (see CLAUDE.md "League rules" / "Strategy conclusions"):
     `flips` games by edge = (1 - p_fav) * cbs_fav. Tiebreak: bracket the total when A/B
     picks differ, straddle +-3 when identical.
   * Weekly $40 to most correct (tiebreak: closest total; exact ties split). Season
-    $160/$140/$120 to top 3 cumulative (ties broken at random).
+    $140/$120/$100 to top 3 cumulative (ties broken at random).
 """
 import argparse
 import glob
@@ -41,7 +41,7 @@ TOTAL_SD = 13.5          # actual total vs vegas total
 PUBLIC_TB_SD = 7.0       # public tiebreak guess vs vegas total
 SHARP_TB_SD = 1.5
 PAYOUT_WEEK = 40
-PAYOUT_SEASON = np.array([160, 140, 120])
+PAYOUT_SEASON = np.array([140, 120, 100])
 
 
 def load_pool(data_dir):
