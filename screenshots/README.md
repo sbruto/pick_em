@@ -3,6 +3,7 @@ Weekly screenshots of the CBS pool picks page, one subdirectory per week
 
 Workflow: drop screenshot(s) of the "% picking" bars here, then ask Claude to read
 them into `cbs_pick_percents` in pick_em_2026.ipynb. Claude reads the numbers back
-for a sanity check before editing the notebook. Team names must match the
+for a sanity check before editing the notebook. Enter the dict in CBS page order (top to bottom) so the copy/paste pick cells come out
+in CBS order. Team names must match the
 vegasinsider tags (e.g. 'Vikings', not 'MIN'); the notebook's validation cell warns
 on any mismatch.
