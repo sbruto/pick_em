@@ -1,0 +1,85 @@
+{
+ "week": 3,
+ "games": [
+  {
+   "fav": "Panthers",
+   "p_fav": 0.576,
+   "cbs_fav": 84
+  },
+  {
+   "fav": "Vikings",
+   "p_fav": 0.526,
+   "cbs_fav": 72
+  },
+  {
+   "fav": "Bengals",
+   "p_fav": 0.628,
+   "cbs_fav": 90
+  },
+  {
+   "fav": "Rams",
+   "p_fav": 0.559,
+   "cbs_fav": 73
+  },
+  {
+   "fav": "Eagles",
+   "p_fav": 0.666,
+   "cbs_fav": 92
+  },
+  {
+   "fav": "Giants",
+   "p_fav": 0.567,
+   "cbs_fav": 69
+  },
+  {
+   "fav": "Packers",
+   "p_fav": 0.693,
+   "cbs_fav": 96
+  },
+  {
+   "fav": "Jaguars",
+   "p_fav": 0.58,
+   "cbs_fav": 68
+  },
+  {
+   "fav": "Seahawks",
+   "p_fav": 0.728,
+   "cbs_fav": 99
+  },
+  {
+   "fav": "Lions",
+   "p_fav": 0.726,
+   "cbs_fav": 95
+  },
+  {
+   "fav": "Saints",
+   "p_fav": 0.614,
+   "cbs_fav": 67
+  },
+  {
+   "fav": "Ravens",
+   "p_fav": 0.616,
+   "cbs_fav": 65
+  },
+  {
+   "fav": "Bills",
+   "p_fav": 0.747,
+   "cbs_fav": 98
+  },
+  {
+   "fav": "Texans",
+   "p_fav": 0.575,
+   "cbs_fav": 51
+  },
+  {
+   "fav": "49ers",
+   "p_fav": 0.783,
+   "cbs_fav": 98
+  },
+  {
+   "fav": "Chiefs",
+   "p_fav": 0.849,
+   "cbs_fav": 99
+  }
+ ]
+}
