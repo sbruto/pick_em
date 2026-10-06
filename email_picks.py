@@ -142,16 +142,17 @@ def main():
 
     try:
         # launchd fires missed runs the instant the laptop wakes, often before Wi-Fi is
-        # back (2026-10-06: DNS failure at 08:33). Retry for a few minutes.
-        for attempt in range(8):
+        # back (2026-10-06: DNS failure at 08:33). Two retries, 60 s apart; only ONE
+        # failure email is sent, after the last attempt.
+        for attempt in range(3):
             try:
                 games, tiebreak = pickem.chalk_picks(cfg.get('url', pickem.URL))
                 break
             except (urllib.error.URLError, OSError, ConnectionError) as e:
-                print(f"attempt {attempt + 1}: {e}; retrying in 45s", file=sys.stderr)
-                if attempt == 7:
+                print(f"attempt {attempt + 1}: {e}", file=sys.stderr)
+                if attempt == 2:
                     raise
-                time.sleep(45)
+                time.sleep(60)
         if not games:
             raise RuntimeError("scrape returned no games with moneyline data")
     except Exception:
