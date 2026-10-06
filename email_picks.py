@@ -21,7 +21,9 @@ import math
 import os
 import subprocess
 import sys
+import time
 import traceback
+import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -139,7 +141,17 @@ def main():
     stamp = f"{dt.datetime.now():%Y-%m-%d %H:%M}"
 
     try:
-        games, tiebreak = pickem.chalk_picks(cfg.get('url', pickem.URL))
+        # launchd fires missed runs the instant the laptop wakes, often before Wi-Fi is
+        # back (2026-10-06: DNS failure at 08:33). Retry for a few minutes.
+        for attempt in range(8):
+            try:
+                games, tiebreak = pickem.chalk_picks(cfg.get('url', pickem.URL))
+                break
+            except (urllib.error.URLError, OSError, ConnectionError) as e:
+                print(f"attempt {attempt + 1}: {e}; retrying in 45s", file=sys.stderr)
+                if attempt == 7:
+                    raise
+                time.sleep(45)
         if not games:
             raise RuntimeError("scrape returned no games with moneyline data")
     except Exception:

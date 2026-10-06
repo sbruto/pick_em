@@ -60,10 +60,8 @@ def load_sections(tab):
                if c not in ('Time', 'Open') and not str(c).startswith('Unnamed')]
     # Completed games are moved to the END of each section under a 'Final' marker row,
     # with their closing lines still shown, so they would otherwise look like live games
-    # (and the "last game listed" tiebreaker logic would pick them). Drop them. Second
-    # guard: rotation numbers ascend within a section, so a drop in rotation number also
-    # means we've hit the finished games.
-    rows, seen, section, final, last_rot, dropped = [], set(), 0, False, -1, []
+    # (and the "last game listed" tiebreaker logic would pick them). Drop them.
+    rows, seen, section, final, dropped = [], set(), 0, False, []
     for _, r in tab.iterrows():
         t = r['Time']
         if not isinstance(t, str):
@@ -77,11 +75,12 @@ def load_sections(tab):
         rot = int(m.group(1))
         if rot in seen:                           # rotation number repeated -> new section
             section += 1
-            seen, final, last_rot = set(), False, -1
+            seen, final = set(), False
         seen.add(rot)
-        if rot < last_rot and rot % 2 == 1:       # away team out of order -> finished game
-            final = True
-        last_rot = rot
+        # NOTE: no rotation-number-order guard. The site lists games by kickoff time and
+        # rotation numbers are not monotonic in that order (2026-10-06: 473/474 Bears@Packers
+        # listed before 467/468; Thursday game numbered 307/308). The 'Final' marker row is
+        # the only reliable signal for finished games.
         if final:
             if section == 0:
                 dropped.append(m.group(2))
