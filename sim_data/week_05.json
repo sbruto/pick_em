@@ -1,0 +1,80 @@
+{
+ "week": 5,
+ "games": [
+  {
+   "fav": "Vikings",
+   "p_fav": 0.545,
+   "cbs_fav": 85
+  },
+  {
+   "fav": "Bears",
+   "p_fav": 0.553,
+   "cbs_fav": 77
+  },
+  {
+   "fav": "Broncos",
+   "p_fav": 0.619,
+   "cbs_fav": 85
+  },
+  {
+   "fav": "Lions",
+   "p_fav": 0.683,
+   "cbs_fav": 91
+  },
+  {
+   "fav": "Steelers",
+   "p_fav": 0.565,
+   "cbs_fav": 65
+  },
+  {
+   "fav": "Bengals",
+   "p_fav": 0.732,
+   "cbs_fav": 97
+  },
+  {
+   "fav": "Jaguars",
+   "p_fav": 0.753,
+   "cbs_fav": 89
+  },
+  {
+   "fav": "Texans",
+   "p_fav": 0.759,
+   "cbs_fav": 90
+  },
+  {
+   "fav": "Patriots",
+   "p_fav": 0.635,
+   "cbs_fav": 59
+  },
+  {
+   "fav": "Seahawks",
+   "p_fav": 0.593,
+   "cbs_fav": 53
+  },
+  {
+   "fav": "Cowboys",
+   "p_fav": 0.791,
+   "cbs_fav": 97
+  },
+  {
+   "fav": "Falcons",
+   "p_fav": 0.612,
+   "cbs_fav": 50
+  },
+  {
+   "fav": "Rams",
+   "p_fav": 0.592,
+   "cbs_fav": 47
+  },
+  {
+   "fav": "Commanders",
+   "p_fav": 0.624,
+   "cbs_fav": 28
+  },
+  {
+   "fav": "Jets",
+   "p_fav": 0.541,
+   "cbs_fav": 21
+  }
+ ]
+}
