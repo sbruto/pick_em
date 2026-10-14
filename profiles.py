@@ -36,6 +36,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 from league_log import ABBR  # nickname -> CBS abbreviation  # noqa: E402
 
 HOME_TEAMS = {'MIN', 'GB'}          # local-fan teams (league is mostly Minnesotan)
+FAN_MIN_GAMES, FAN_LEAN = 3, 0.30   # a 'fan team' = taken >= 0.30 more often than modeled, over >= 3 games
+CLOSE_BOOST = 2.0                   # logit shift toward the dog in close games for public players
+                                    # (scaled by (0.65 - p_fav)/0.15; fitted by fit_close_boost)
 CLOSE, MID = 0.60, 0.70             # P(fav) buckets: close < 0.60 <= mid < 0.70 <= big
 
 
@@ -129,18 +132,26 @@ def build_profiles(hist):
         close, mid, big = p < CLOSE, (p >= CLOSE) & (p < MID), p >= MID
 
         offset = fit_offset(pf, cbs)
-        # local-team lean, per team: how much more often they take MIN (or GB) than the
-        # CBS+offset model says. Kept separate because GB@MIN games confound a pooled number.
-        lean = {}
-        for team in HOME_TEAMS:
+        # team lean, for EVERY team: how much more often they take that team than the
+        # CBS+offset model says (>0 = fan-like). MIN/GB kept as named columns (league is
+        # Minnesotan); any team with >= FAN_MIN_GAMES games and lean >= FAN_LEAN is a
+        # 'fan team', used to predict their pick when that team plays (e.g. Monday night
+        # when the week is close).
+        lean, lean_n = {}, {}
+        teams_seen = {t for r in rs for t in (r['fav'], r['dog'])}
+        for team in teams_seen:
             trs = [r for r in rs if team in (r['fav'], r['dog'])]
-            if not trs:
-                lean[team] = np.nan
-                continue
             picked = np.array([r['pick'] == team for r in trs], dtype=float)
             model = np.array([expit(logit(r['cbs_fav'] / 100) + offset) if r['fav'] == team
                               else 1 - expit(logit(r['cbs_fav'] / 100) + offset) for r in trs])
-            lean[team] = float((picked - model).mean())            # >0 = takes this team more than modeled
+            lean[team] = float((picked - model).mean())
+            lean_n[team] = len(trs)
+        for team in HOME_TEAMS:
+            lean.setdefault(team, np.nan)
+        fan = sorted(((t, lean[t], lean_n[t]) for t in lean_n
+                      if lean_n[t] >= FAN_MIN_GAMES and lean[t] >= FAN_LEAN), key=lambda x: -x[1])
+        anti = sorted(((t, lean[t], lean_n[t]) for t in lean_n
+                       if lean_n[t] >= FAN_MIN_GAMES and lean[t] <= -FAN_LEAN), key=lambda x: x[1])
 
         devs_per_week = devs / n_weeks
         tb_vegas = (not np.isnan(tb_mad)) and tb_mad <= 3.0
@@ -158,7 +169,10 @@ def build_profiles(hist):
             'tb_vegas': tb_vegas,
             'min_lean': round(lean['MIN'], 2) if not np.isnan(lean['MIN']) else '',
             'gb_lean': round(lean['GB'], 2) if not np.isnan(lean['GB']) else '',
+            'fan_teams': ' '.join(f"{t}:{v:+.2f}({n})" for t, v, n in fan),
+            'anti_teams': ' '.join(f"{t}:{v:+.2f}({n})" for t, v, n in anti),
             'archetype': arch,
+            '_team_lean': {t: (lean[t], lean_n[t]) for t in lean_n},   # not written to CSV
         }
     return profiles
 
@@ -180,15 +194,45 @@ def predict(profiles, games):
             elif pr['archetype'] == 'hunter':
                 q = 0.15 if i in closest else 0.95
             else:
+                # public players leave the favorite more in close games than their overall
+                # deviation rate implies (scoring weeks 3-5 under-counted dog-takers there)
+                z -= CLOSE_BOOST * max(0.0, 0.65 - g['p_fav']) / 0.15
                 q = float(expit(z))
-            for team, key in (('MIN', 'min_lean'), ('GB', 'gb_lean')):
-                lean = pr[key] if pr[key] != '' else 0.0
-                if lean and team in (g['fav'], g['dog']):
-                    shift = 1.5 * lean                     # logit shift toward the local team
+            # team lean (fan / anti-fan), any team with enough games
+            for team in (g['fav'], g['dog']):
+                lv, n = pr.get('_team_lean', {}).get(team, (0.0, 0))
+                if n >= 2 and abs(lv) >= 0.2:
+                    shift = 1.5 * lv
                     q = float(expit(logit(q) + (shift if g['fav'] == team else -shift)))
             probs.append(q)
         out[name] = probs
     return out
+
+
+def fit_close_boost(hist, profiles):
+    """Grid-search the global close-game boost that minimizes Brier on all logged picks."""
+    global CLOSE_BOOST
+    by_week = defaultdict(dict)
+    for r in hist:
+        by_week[r['week']].setdefault((r['fav'], r['dog']), {'fav': r['fav'], 'dog': r['dog'], 'p_fav': r['p_fav'], 'cbs_fav': r['cbs_fav']})
+    actual = {(r['week'], r['name'], r['fav']): r['picked_fav'] for r in hist}
+    best = (None, 1e9)
+    for b in [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0]:
+        CLOSE_BOOST = b
+        se, n = 0.0, 0
+        for w, gd in by_week.items():
+            games = list(gd.values())
+            preds = predict(profiles, games)
+            for name, probs in preds.items():
+                for g, q in zip(games, probs):
+                    y = actual.get((w, name, g['fav']))
+                    if y is None:
+                        continue
+                    se += (q - float(y)) ** 2; n += 1
+        if se / n < best[1]:
+            best = (b, se / n)
+    CLOSE_BOOST = best[0]
+    return best[0]
 
 
 def write_prediction(week, games, preds, profiles):
@@ -246,14 +290,19 @@ def main():
     weeks_logged = sorted({r['week'] for r in hist})
     print(f"history: weeks {weeks_logged}, {len(profiles)} players, {len(hist)} picks")
 
+    global CLOSE_BOOST
+    CLOSE_BOOST = fit_close_boost(hist, profiles)
+    print(f"close-game boost fitted on history: {CLOSE_BOOST:.1f}")
+
+    fields = [k for k in next(iter(profiles.values())).keys() if not k.startswith('_')]
     with open(os.path.join(HERE, 'league', 'profiles.csv'), 'w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=list(next(iter(profiles.values())).keys()))
+        w = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
         w.writeheader(); w.writerows(profiles.values())
 
-    print(f"\n{'name':24} {'arch':7} {'dev/wk':>6} {'close':>5} {'mid':>5} {'big':>5} {'offset':>6} {'tb|dev|':>7} {'MIN':>5} {'GB':>5}")
+    print(f"\n{'name':24} {'arch':7} {'dev/wk':>6} {'close':>5} {'mid':>5} {'big':>5} {'offset':>6} {'tb|dev|':>7} {'MIN':>5} {'GB':>5}  fan teams | anti")
     for pr in sorted(profiles.values(), key=lambda p: (p['archetype'], -p['devs_per_week'])):
         print(f"{pr['name'][:24]:24} {pr['archetype']:7} {pr['devs_per_week']:6.2f} {pr['fav_rate_close']:5.2f} "
-              f"{pr['fav_rate_mid']:5.2f} {pr['fav_rate_big']:5.2f} {pr['cbs_offset']:6.2f} {str(pr['tb_mean_abs_dev']):>7} {str(pr['min_lean']):>5} {str(pr['gb_lean']):>5}")
+              f"{pr['fav_rate_mid']:5.2f} {pr['fav_rate_big']:5.2f} {pr['cbs_offset']:6.2f} {str(pr['tb_mean_abs_dev']):>7} {str(pr['min_lean']):>5} {str(pr['gb_lean']):>5}  {pr['fan_teams']} | {pr['anti_teams']}")
 
     for team, key in (('MIN', 'min_lean'), ('GB', 'gb_lean')):
         v = [p[key] for p in profiles.values() if p[key] != '']
