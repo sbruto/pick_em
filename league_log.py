@@ -81,7 +81,9 @@ def espn_results(week, season=2026):
         games.append({'date': e['date'], 'away': ab(c['away']), 'home': ab(c['home']),
                       'away_pts': int(c['away']['score']), 'home_pts': int(c['home']['score'])})
     games.sort(key=lambda g: g['date'])
-    winners = {(g['home'] if g['home_pts'] > g['away_pts'] else g['away']) for g in games}
+    # ties score for nobody (CBS: Week 5 NYG@WAS 27-27 gave no points either side)
+    winners = {(g['home'] if g['home_pts'] > g['away_pts'] else g['away'])
+               for g in games if g['home_pts'] != g['away_pts']}
     last = games[-1]
     return winners, last['away_pts'] + last['home_pts'], games
 
