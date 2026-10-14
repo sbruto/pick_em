@@ -48,11 +48,20 @@ def parse_paste(path):
         name = lines[i + 1].strip()
         pts = lines[i + 2].split()
         week_pts, ytd_pts = int(pts[0]), int(pts[1])
-        picks = [l.strip() for l in lines[i + 3:i + 19]]
-        tb = lines[i + 19].strip()
+        # picks run until the tiebreak line (a number, or '-' right before the next
+        # rank line / end of file). Game count varies with byes (16 early, 15 in Week 5).
+        picks, j, tb = [], i + 3, None
+        while j < len(lines):
+            tok = lines[j].strip()
+            nxt_is_rank = (j + 1 >= len(lines)) or bool(rank_re.match(lines[j + 1].strip()))
+            if tok.isdigit():
+                tb = int(tok); j += 1; break
+            if tok == '-' and nxt_is_rank:
+                j += 1; break
+            picks.append(tok); j += 1
         entries.append({'rank': rank, 'name': name, 'week_pts': week_pts, 'ytd_pts': ytd_pts,
-                        'picks': picks, 'tiebreak': int(tb) if tb.isdigit() else None})
-        i += 20
+                        'picks': picks, 'tiebreak': tb})
+        i = j
     return entries
 
 
