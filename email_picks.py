@@ -70,9 +70,9 @@ def build_email(week, games, tiebreak, prev, updated):
     """
     prev_picks = {(g['away'], g['home']): g['pick'] for g in (prev or {}).get('games', [])}
     prev_tb = (prev or {}).get('tiebreak')
-    # default tiebreak: just outside the crowd's cluster on whichever side holds more
-    # total-score mass (key numbers 37-47 => low side when the line is high, high side
-    # when the line is low). Overridden by hand on Monday via tiebreak_monday.py.
+    # default tiebreak: above the crowd's cluster (rivals sit at/below the line, totals
+    # skew high), ~line + 7/8 for a typical 3-way tie. Overridden by hand on Monday via
+    # tiebreak_monday.py once the tie group is known.
     tb_num = default_tb(tiebreak['total'])
     old_tb = default_tb(prev_tb['total']) if prev_tb else None
 

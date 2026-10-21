@@ -76,11 +76,30 @@ def actual_minus_line(season=2026, weeks=None, cache=os.path.join(HERE, 'league'
     return np.array([r[2] - r[3] for r in rows])
 
 
-def default_tiebreak(total, k=5, offsets=range(-9, 10), seed=0):
-    """Line-dependent default when the tie group is not yet known: the integer that
-    maximizes P(closest) against k rivals drawn from the league's guess history, with the
-    actual total modeled as an integer with key-number weighting. Falls back to
-    floor(total)+5 if the league data files are missing. Returns (number, p_win)."""
+def key_weight(T):
+    """Key-number multiplier ~1.0: each total's long-run frequency divided by a smoothed
+    (5-point moving average) envelope, so only the LOCAL clustering remains (bumps at
+    37/41/44/47, dips at 36/42/46...). The overall shape of where totals fall comes from
+    the kernel over this season's offsets, not from here. Outside the table -> 1.0."""
+    ks = sorted(KEY_FREQ)
+    f = np.array([KEY_FREQ[k] for k in ks])
+    env = np.convolve(np.pad(f, 2, mode='edge'), np.ones(5) / 5, mode='valid')
+    rel = dict(zip(ks, f / env))
+    w = np.array([rel.get(int(t), 1.0) for t in T])
+    # taper to 1.0 at the edges of the table where the estimate is weakest
+    lo, hi = ks[0] + 2, ks[-1] - 2
+    w = np.where((T < lo) | (T > hi), 1.0, w)
+    return w
+
+
+def default_tiebreak(total, k=3, offsets=range(-15, 16), seed=0):
+    """Default when the tie group is not yet known: the integer that maximizes
+    P(closest) against k rivals drawn from the league's guess history (k=3 ~ the median
+    size of the top-score group so far), with the actual total modeled as an integer with
+    key-number weighting. Comes out ~line + 7/8: rivals cluster at/below the line and
+    totals skew slightly high, so the open side is above, and the more rivals the
+    further out you go (k=2 -> +4, k=5 -> +11). Falls back to floor(total)+5 if the
+    league data files are missing. Returns (number, p_win)."""
     try:
         rows = json.load(open(os.path.join(HERE, 'league', 'closing_totals.json')))
         diffs = np.array([r[2] - r[3] for r in rows])
@@ -96,7 +115,7 @@ def default_tiebreak(total, k=5, offsets=range(-9, 10), seed=0):
     rng = np.random.default_rng(seed); n = 30000
     T = np.arange(int(total) - 30, int(total) + 31)
     smooth = np.exp(-0.5 * ((T[:, None] - total - diffs[None, :]) / 4.0) ** 2).sum(axis=1)
-    pT = smooth * np.array([KEY_FREQ.get(int(t), 1.0) for t in T]); pT /= pT.sum()
+    pT = smooth * key_weight(T); pT /= pT.sum()
     a = rng.choice(T, n, p=pT).astype(float)
     r = np.round(total + rng.choice(riv, (n, k)))
     dr = np.abs(a[:, None] - r).min(axis=1)
@@ -171,8 +190,7 @@ def main():
     T = np.arange(int(args.total) - 30, int(args.total) + 31)
     bw = 4.0
     smooth = np.exp(-0.5 * ((T[:, None] - args.total - diffs[None, :]) / bw) ** 2).sum(axis=1)
-    w = np.array([KEY_FREQ.get(int(t), 1.0) for t in T])
-    pT = smooth * w; pT /= pT.sum()
+    pT = smooth * key_weight(T); pT /= pT.sum()
     actual = rng.choice(T, N_SIM, p=pT).astype(float)
     fav_wins = rng.random(N_SIM) < args.p_fav
     we_win_game = fav_wins if our_pick == args.fav else ~fav_wins
