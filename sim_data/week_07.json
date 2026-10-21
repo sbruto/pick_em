@@ -1,0 +1,75 @@
+{
+ "week": 7,
+ "games": [
+  {
+   "fav": "Browns",
+   "p_fav": 0.535,
+   "cbs_fav": 91
+  },
+  {
+   "fav": "Panthers",
+   "p_fav": 0.61,
+   "cbs_fav": 94
+  },
+  {
+   "fav": "49ers",
+   "p_fav": 0.616,
+   "cbs_fav": 93
+  },
+  {
+   "fav": "Broncos",
+   "p_fav": 0.666,
+   "cbs_fav": 92
+  },
+  {
+   "fav": "Bears",
+   "p_fav": 0.588,
+   "cbs_fav": 74
+  },
+  {
+   "fav": "Steelers",
+   "p_fav": 0.618,
+   "cbs_fav": 79
+  },
+  {
+   "fav": "Jets",
+   "p_fav": 0.671,
+   "cbs_fav": 90
+  },
+  {
+   "fav": "Cowboys",
+   "p_fav": 0.658,
+   "cbs_fav": 81
+  },
+  {
+   "fav": "Vikings",
+   "p_fav": 0.712,
+   "cbs_fav": 96
+  },
+  {
+   "fav": "Lions",
+   "p_fav": 0.605,
+   "cbs_fav": 65
+  },
+  {
+   "fav": "Ravens",
+   "p_fav": 0.576,
+   "cbs_fav": 56
+  },
+  {
+   "fav": "Rams",
+   "p_fav": 0.655,
+   "cbs_fav": 58
+  },
+  {
+   "fav": "Texans",
+   "p_fav": 0.801,
+   "cbs_fav": 83
+  },
+  {
+   "fav": "Seahawks",
+   "p_fav": 0.568,
+   "cbs_fav": 36
+  }
+ ]
+}
