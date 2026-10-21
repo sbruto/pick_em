@@ -37,7 +37,18 @@ import profiles as P  # noqa: E402
 
 A_NAME, B_NAME = 'Hannah Brady', 'Sean Bruton'
 N_SIM = 40000
-# approximate long-run NFL frequency (% of games) of each final total; 1.0 = baseline
+# Data-derived prior (sim_data/nfl_totals_prior.json, built from nflverse games.csv,
+# regular season 2010-2025, ~4300 games with closing totals): relative key-number weights
+# (frequency / 5-point envelope) and the (actual - closing line) distribution.
+PRIOR_PATH = os.path.join(HERE, 'sim_data', 'nfl_totals_prior.json')
+try:
+    _PRIOR = json.load(open(PRIOR_PATH))
+    REL_KEY = {int(k): v for k, v in _PRIOR['rel_key_weight'].items()}
+    PRIOR_DIFFS = np.array(_PRIOR['diffs'])
+except Exception:
+    _PRIOR, REL_KEY, PRIOR_DIFFS = None, None, None
+
+# fallback only (approximate, hand-entered) if the prior file is missing
 KEY_FREQ = {24: 1.2, 27: 1.4, 30: 1.6, 31: 1.8, 33: 1.7, 34: 2.5, 35: 1.6, 36: 1.8, 37: 3.0,
             38: 2.5, 39: 1.9, 40: 2.7, 41: 3.3, 42: 2.3, 43: 2.9, 44: 3.2, 45: 2.7, 46: 2.3,
             47: 3.1, 48: 2.6, 49: 2.2, 50: 2.4, 51: 2.8, 52: 2.2, 53: 1.7, 54: 2.1, 55: 2.1,
@@ -78,9 +89,12 @@ def actual_minus_line(season=2026, weeks=None, cache=os.path.join(HERE, 'league'
 
 def key_weight(T):
     """Key-number multiplier ~1.0: each total's long-run frequency divided by a smoothed
-    (5-point moving average) envelope, so only the LOCAL clustering remains (bumps at
-    37/41/44/47, dips at 36/42/46...). The overall shape of where totals fall comes from
-    the kernel over this season's offsets, not from here. Outside the table -> 1.0."""
+    (5-point moving average) envelope, so only the LOCAL clustering remains (2010-2025
+    data: bumps at 30/33/37/40/41/43/44/47/51/54/55/58, dips at 31/32/35/38/42/45/46/49/
+    53/56/59/60). The overall shape of where totals fall comes from the offset kernel,
+    not from here. Outside the table -> 1.0."""
+    if REL_KEY:
+        return np.array([REL_KEY.get(int(t), 1.0) for t in T])
     ks = sorted(KEY_FREQ)
     f = np.array([KEY_FREQ[k] for k in ks])
     env = np.convolve(np.pad(f, 2, mode='edge'), np.ones(5) / 5, mode='valid')
@@ -90,6 +104,19 @@ def key_weight(T):
     lo, hi = ks[0] + 2, ks[-1] - 2
     w = np.where((T < lo) | (T > hi), 1.0, w)
     return w
+
+
+def offset_distribution(this_season=None):
+    """(actual - closing line) sample: the 2010-2025 prior (~4300 games) plus this season's
+    games (weighted x5 so the current season has a say but cannot dominate)."""
+    parts = []
+    if PRIOR_DIFFS is not None:
+        parts.append(PRIOR_DIFFS)
+    if this_season is not None and len(this_season):
+        parts.append(np.repeat(np.asarray(this_season, dtype=float), 5))
+    d = np.concatenate(parts) if parts else np.random.default_rng(0).normal(0.5, 13.2, 4000)
+    print(f"offset sample: n={len(d)}, mean {d.mean():+.2f}, median {np.median(d):+.1f}, sd {d.std():.1f}, P(over) {np.mean(d > 0):.1%}")
+    return d
 
 
 def default_tiebreak(total, k=3, offsets=range(-15, 16), seed=0):
@@ -102,7 +129,7 @@ def default_tiebreak(total, k=3, offsets=range(-15, 16), seed=0):
     league data files are missing. Returns (number, p_win)."""
     try:
         rows = json.load(open(os.path.join(HERE, 'league', 'closing_totals.json')))
-        diffs = np.array([r[2] - r[3] for r in rows])
+        diffs = offset_distribution(np.array([r[2] - r[3] for r in rows]))
         riv = []
         for f in sorted(glob.glob(os.path.join(HERE, 'league', 'week_[0-9][0-9].csv'))):
             for r in csv.DictReader(open(f)):
@@ -110,11 +137,12 @@ def default_tiebreak(total, k=3, offsets=range(-15, 16), seed=0):
                     riv.append(float(r['tb_vs_vegas']))
         riv = np.array(riv)
         assert len(diffs) > 30 and len(riv) > 30
+        bw = 2.0 if PRIOR_DIFFS is not None else 4.0
     except Exception:
         return int(np.floor(total)) + 5, None
     rng = np.random.default_rng(seed); n = 30000
     T = np.arange(int(total) - 30, int(total) + 31)
-    smooth = np.exp(-0.5 * ((T[:, None] - total - diffs[None, :]) / 4.0) ** 2).sum(axis=1)
+    smooth = np.exp(-0.5 * ((T[:, None] - total - diffs[None, :]) / bw) ** 2).sum(axis=1)
     pT = smooth * key_weight(T); pT /= pT.sum()
     a = rng.choice(T, n, p=pT).astype(float)
     r = np.round(total + rng.choice(riv, (n, k)))
@@ -179,8 +207,7 @@ def main():
         g = f"{r['known']:.0f}" if r['known'] is not None else 'sampled'
         print(f"{r['name'][:24]:24} {str(r['tied']):>4} {r['p_fav_pick']:12.2f} {g:>7}  {np.round(r['hist'], 1).tolist()}")
 
-    diffs = actual_minus_line()
-    print(f"\nactual - closing line this season: n={len(diffs)}, mean {diffs.mean():+.1f}, median {np.median(diffs):+.1f}, sd {diffs.std():.1f}")
+    diffs = offset_distribution(actual_minus_line())
 
     # simulate the actual total as an INTEGER with NFL key-number clustering: a smooth
     # kernel over this season's (actual - line) offsets, re-weighted by the long-run
@@ -188,7 +215,7 @@ def main():
     # scoring makes some totals rare). 93 games is too few to estimate key numbers
     # directly, so the historical prior carries that part.
     T = np.arange(int(args.total) - 30, int(args.total) + 31)
-    bw = 4.0
+    bw = 2.0 if PRIOR_DIFFS is not None else 4.0
     smooth = np.exp(-0.5 * ((T[:, None] - args.total - diffs[None, :]) / bw) ** 2).sum(axis=1)
     pT = smooth * key_weight(T); pT /= pT.sum()
     actual = rng.choice(T, N_SIM, p=pT).astype(float)
