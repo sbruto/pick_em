@@ -48,6 +48,7 @@ def load_previous(path):
         return json.load(f)
 
 
+TB_OFFSET = 5  # see build_email
 RED = '\x00'   # marker prefix: this line gets colored red in Mail (stripped before sending)
 
 
@@ -59,8 +60,12 @@ def build_email(week, games, tiebreak, prev, updated):
     """
     prev_picks = {(g['away'], g['home']): g['pick'] for g in (prev or {}).get('games', [])}
     prev_tb = (prev or {}).get('tiebreak')
-    tb_num = int(math.floor(tiebreak['total']))
-    old_tb = int(math.floor(prev_tb['total'])) if prev_tb else None
+    # default tiebreak = vegas total + TB_OFFSET. Rivals cluster at/below the line and
+    # actual totals skew slightly high (2026 data: 59% of rival guesses below the line,
+    # over hits 52%), so sitting above the cluster claims the open tail. Overridden by
+    # hand on Monday via tiebreak_monday.py when Hannah is in a live tie.
+    tb_num = int(math.floor(tiebreak['total'])) + TB_OFFSET
+    old_tb = int(math.floor(prev_tb['total'])) + TB_OFFSET if prev_tb else None
 
     changed = {(g['away'], g['home']) for g in games
                if (g['away'], g['home']) in prev_picks and prev_picks[(g['away'], g['home'])] != g['pick']}
@@ -94,7 +99,7 @@ def build_email(week, games, tiebreak, prev, updated):
         L.append((RED if (g['away'], g['home']) in changed else "") +
                  f"{g['away']:>12} @ {g['home']:<12} ->  {g['pick']:<10} ({g['spread']:+.1f}, {g['p_pick']:.0%})")
     L.append((RED if tb_changed else "") +
-             f"Tiebreaker: {tiebreak['away']} @ {tiebreak['home']}, vegas total {tiebreak['total']:.1f} -> enter {tb_num}")
+             f"Tiebreaker: {tiebreak['away']} @ {tiebreak['home']}, vegas total {tiebreak['total']:.1f} -> enter {tb_num} (line + {TB_OFFSET})")
 
     # color indexes are computed on the FINAL line list, so they match Mail's paragraphs
     changed_idx = [i for i, ln in enumerate(L) if ln.startswith(RED)]
