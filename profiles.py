@@ -18,8 +18,8 @@ Outputs (league/ is gitignored):
 Model: each player's pick in a game is Bernoulli(P(fav)). Baseline P(fav) is the CBS
 public % on the favorite, shifted on the logit scale by a per-player "chalkiness" offset
 fitted so their predicted deviation count matches history. Archetypes override:
-  chalk   -> 0.97 flat;  hunter -> takes the dog in their usual number of closest games;
-  public  -> CBS + offset.  Minnesota lean: an extra logit shift toward MIN/GB when a
+  chalk   -> descriptive tag only, predicted as public (offset does the work);
+  hunter -> takes the dog in their usual number of closest games; public -> CBS + offset.  Minnesota lean: an extra logit shift toward MIN/GB when a
 player has taken them more often than their model predicted (most players are in MN).
 """
 import argparse
@@ -189,9 +189,10 @@ def predict(profiles, games):
             closest = sorted(range(len(games)), key=lambda i: games[i]['p_fav'])[:k]
         for i, g in enumerate(games):
             z = logit(g['cbs_fav'] / 100) + pr['cbs_offset']
-            if pr['archetype'] == 'chalk':
-                q = 0.97
-            elif pr['archetype'] == 'hunter':
+            # 'chalk' is a descriptive tag only (2026-10-29): chalk-tagged players are
+            # predicted like public players, with their large fitted offset carrying the
+            # chalkiness. A flat 0.97 ignored split games and fit slightly worse.
+            if pr['archetype'] == 'hunter':
                 q = 0.15 if i in closest else 0.95
             else:
                 # public players leave the favorite more in close games than their overall
