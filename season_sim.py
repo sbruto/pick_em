@@ -62,7 +62,7 @@ def rival_fav_probs(profs, names, p_fav, cbs):
     return np.array([pred[n] for n in names])
 
 
-def simulate(seasons, flips, profs, names, ytd, week_now, pool, seed=0):
+def simulate(seasons, flips, profs, names, ytd, week_now, pool, seed=0, fade_on=True):
     rng = np.random.default_rng(seed)
     S, R = seasons, len(names)
     weeks_left = WEEKS_TOTAL - week_now
@@ -91,7 +91,7 @@ def simulate(seasons, flips, profs, names, ytd, week_now, pool, seed=0):
         a_correct = fav_wins.sum(axis=1)
 
         b_pick = np.ones((S, GAMES), dtype=bool)
-        fade = (pf <= TOSSUP_P) & (cb > 50)
+        fade = (pf <= TOSSUP_P) & (cb > 50) if fade_on else np.zeros_like(pf, dtype=bool)
         b_pick[fade] = False
         if flips > 0:
             edge = (1 - pf) * cb / 100
@@ -131,6 +131,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--seasons', type=int, default=10000)
     ap.add_argument('--flips', type=int, nargs='+', default=[0, 1, 2, 3])
+    ap.add_argument('--no-fade', action='store_true', help='B = vegas except the top-`flips` edge games (no toss-up fade rule)')
     args = ap.parse_args()
 
     hist = P.load_history()
@@ -146,7 +147,7 @@ def main():
     print(f"\n{'flips':>5} | {'A $':>6} {'B $':>6} {'both $':>7} | {'A pod':>6} {'A wk$':>6} | "
           f"{'B wk$':>6} {'B seas$':>7} {'B pod':>6} {'P(B wins >=1 wk)':>16} {'E[B wins]':>9}")
     for flips in args.flips:
-        r = simulate(args.seasons, flips, profs, names, ytd, week_now, pool)
+        r = simulate(args.seasons, flips, profs, names, ytd, week_now, pool, fade_on=not args.no_fade)
         A = r['A_week'].mean() + r['A_season'].mean(); B = r['B_week'].mean() + r['B_season'].mean()
         print(f"{flips:>5} | {A:6.1f} {B:6.1f} {A + B:7.1f} | {r['A_podium'].mean():6.1%} {r['A_week'].mean():6.1f} | "
               f"{r['B_week'].mean():6.1f} {r['B_season'].mean():7.1f} {r['B_podium'].mean():6.1%} "
