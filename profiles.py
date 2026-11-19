@@ -261,13 +261,15 @@ def score(week):
         if name not in actual:
             continue
         picks = set(actual[name])
+        # only games where the player actually picked a side (blank '-' entries skipped)
+        m = np.array([(g[0] in picks) or (g[1] in picks) for g in games])
         y = np.array([g[0] in picks for g in games], dtype=float)
         pcl = np.clip(probs, 0.02, 0.98)
-        ll += -(y * np.log(pcl) + (1 - y) * np.log(1 - pcl)).sum(); br += ((probs - y) ** 2).sum(); n += len(y)
-        exp_dogs += 1 - probs; act_dogs += 1 - y
-        per_player.append((name, r[1], int((1 - y).sum()), round(float((1 - probs).sum()), 1)))
+        ll += -(m * (y * np.log(pcl) + (1 - y) * np.log(1 - pcl))).sum(); br += (m * (probs - y) ** 2).sum(); n += m.sum()
+        exp_dogs += m * (1 - probs); act_dogs += m * (1 - y)
+        per_player.append((name, r[1], int((m * (1 - y)).sum()), round(float((m * (1 - probs)).sum()), 1)))
     print(f"week {week}: {len(per_player)} players scored. log loss {ll / n:.3f}/pick, Brier {br / n:.3f}  "
-          f"(baseline: always-fav Brier = {np.mean(act_dogs) / len(per_player):.3f})")
+          f"(baseline: always-fav Brier = {act_dogs.sum() / n:.3f})")
     print(f"\n{'game':>10} {'exp dogs':>8} {'actual':>6}")
     for g, e, a in zip(games, exp_dogs, act_dogs):
         print(f"{g[0]+'>'+g[1]:>10} {e:8.1f} {int(a):6d}")
