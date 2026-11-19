@@ -1,0 +1,70 @@
+{
+ "week": 11,
+ "games": [
+  {
+   "fav": "Panthers",
+   "p_fav": 0.557,
+   "cbs_fav": 84
+  },
+  {
+   "fav": "Steelers",
+   "p_fav": 0.662,
+   "cbs_fav": 94
+  },
+  {
+   "fav": "Chargers",
+   "p_fav": 0.593,
+   "cbs_fav": 75
+  },
+  {
+   "fav": "49ers",
+   "p_fav": 0.598,
+   "cbs_fav": 73
+  },
+  {
+   "fav": "Jaguars",
+   "p_fav": 0.698,
+   "cbs_fav": 93
+  },
+  {
+   "fav": "Bengals",
+   "p_fav": 0.716,
+   "cbs_fav": 97
+  },
+  {
+   "fav": "Lions",
+   "p_fav": 0.718,
+   "cbs_fav": 96
+  },
+  {
+   "fav": "Cowboys",
+   "p_fav": 0.772,
+   "cbs_fav": 96
+  },
+  {
+   "fav": "Broncos",
+   "p_fav": 0.82,
+   "cbs_fav": 96
+  },
+  {
+   "fav": "Bears",
+   "p_fav": 0.834,
+   "cbs_fav": 99
+  },
+  {
+   "fav": "Texans",
+   "p_fav": 0.846,
+   "cbs_fav": 94
+  },
+  {
+   "fav": "Chiefs",
+   "p_fav": 0.9,
+   "cbs_fav": 99
+  },
+  {
+   "fav": "Bills",
+   "p_fav": 0.904,
+   "cbs_fav": 99
+  }
+ ]
+}
